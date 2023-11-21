@@ -1,175 +1,106 @@
 #!/usr/bin/python3
-""" """
-from models.amenity import Amenity
-import os
+"""
+Contains the TestAmenityDocs classes
+"""
+
+from datetime import datetime
+import inspect
+import models
+from models import amenity
+from models.base_model import BaseModel
+import pep8
+import unittest
+Amenity = amenity.Amenity
 
 
-if os.getenv("HBNB_TYPE_STORAGE") == "db":
-    import MySQLdb
-    from models.place import Place
-    from models import storage
-    import unittest
-    import datetime
-    import inspect
-    import io
-    import sys
-    import cmd
-    import shutil
-    import console
+class TestAmenityDocs(unittest.TestCase):
+    """Tests to check the documentation and style of Amenity class"""
+    @classmethod
+    def setUpClass(cls):
+        """Set up for the doc tests"""
+        cls.amenity_f = inspect.getmembers(Amenity, inspect.isfunction)
 
-    """
-        Backup console
-    """
-    if os.path.exists("copy_console.py"):
-        shutil.copy("copy_console.py", "console.py")
-    shutil.copy("console.py", "copy_console.py")
+    def test_pep8_conformance_amenity(self):
+        """Test that models/amenity.py conforms to PEP8."""
+        pep8s = pep8.StyleGuide(quiet=True)
+        result = pep8s.check_files(['models/amenity.py'])
+        self.assertEqual(result.total_errors, 0,
+                         "Found code style errors (and warnings).")
 
-    """
-        Updating console to remove "__main__"
-    """
-    with open("copy_console.py", "r") as file_i:
-        console_lines = file_i.readlines()
-        with open("console.py", "w") as file_o:
-            in_main = False
-            for line in console_lines:
-                if "__main__" in line:
-                    in_main = True
-                elif in_main:
-                    if "cmdloop" not in line:
-                        file_o.write(line.lstrip("    "))
-                else:
-                    file_o.write(line)
+    def test_pep8_conformance_test_amenity(self):
+        """Test that tests/test_models/test_amenity.py conforms to PEP8."""
+        pep8s = pep8.StyleGuide(quiet=True)
+        result = pep8s.check_files(['tests/test_models/test_amenity.py'])
+        self.assertEqual(result.total_errors, 0,
+                         "Found code style errors (and warnings).")
 
-    """
-     Create console
-    """
-    console_obj = "HBNBCommand"
-    for name, obj in inspect.getmembers(console):
-        if inspect.isclass(obj) and issubclass(obj, cmd.Cmd):
-            console_obj = obj
+    def test_amenity_module_docstring(self):
+        """Test for the amenity.py module docstring"""
+        self.assertIsNot(amenity.__doc__, None,
+                         "amenity.py needs a docstring")
+        self.assertTrue(len(amenity.__doc__) >= 1,
+                        "amenity.py needs a docstring")
 
-    my_console = console_obj(stdout=io.StringIO(), stdin=io.StringIO())
-    my_console.use_rawinput = False
+    def test_amenity_class_docstring(self):
+        """Test for the Amenity class docstring"""
+        self.assertIsNot(Amenity.__doc__, None,
+                         "Amenity class needs a docstring")
+        self.assertTrue(len(Amenity.__doc__) >= 1,
+                        "Amenity class needs a docstring")
 
-    """
-     Exec command
-    """
+    def test_amenity_func_docstrings(self):
+        """Test for the presence of docstrings in Amenity methods"""
+        for func in self.amenity_f:
+            self.assertIsNot(func[1].__doc__, None,
+                             "{:s} method needs a docstring".format(func[0]))
+            self.assertTrue(len(func[1].__doc__) >= 1,
+                            "{:s} method needs a docstring".format(func[0]))
 
-    def exec_command(my_console, the_command, last_lines=1):
-        my_console.stdout = io.StringIO()
-        real_stdout = sys.stdout
-        sys.stdout = my_console.stdout
-        my_console.onecmd(the_command)
-        sys.stdout = real_stdout
-        lines = my_console.stdout.getvalue().split("\n")
-        return "\n".join(lines[(-1 * (last_lines + 1)) : -1])
 
-    DB_CONFIG = {
-        "host": "localhost",
-        "user": "hbnb_test",
-        "password": "hbnb_test_pwd",
-        "db": "hbnb_test_db",
-    }
+class TestAmenity(unittest.TestCase):
+    """Test the Amenity class"""
+    def test_is_subclass(self):
+        """Test that Amenity is a subclass of BaseModel"""
+        amenity = Amenity()
+        self.assertIsInstance(amenity, BaseModel)
+        self.assertTrue(hasattr(amenity, "id"))
+        self.assertTrue(hasattr(amenity, "created_at"))
+        self.assertTrue(hasattr(amenity, "updated_at"))
 
-    class TestAmenity(unittest.TestCase):
-        """Test cases for Amenity class"""
+    def test_name_attr(self):
+        """Test that Amenity has attribute name, and it's as an empty string"""
+        amenity = Amenity()
+        self.assertTrue(hasattr(amenity, "name"))
+        if models.storage_t == 'db':
+            self.assertEqual(amenity.name, None)
+        else:
+            self.assertEqual(amenity.name, "")
 
-        def setUp(self):
-            """Connect to the test database and create a cursor"""
-            self.db = MySQLdb.connect(**DB_CONFIG)
-            self.cursor = self.db.cursor()
+    def test_to_dict_creates_dict(self):
+        """test to_dict method creates a dictionary with proper attrs"""
+        am = Amenity()
+        print(am.__dict__)
+        new_d = am.to_dict()
+        self.assertEqual(type(new_d), dict)
+        self.assertFalse("_sa_instance_state" in new_d)
+        for attr in am.__dict__:
+            if attr is not "_sa_instance_state":
+                self.assertTrue(attr in new_d)
+        self.assertTrue("__class__" in new_d)
 
-        def tearDown(self):
-            """Close the cursor and connection after the test"""
-            self.cursor.close()
-            self.db.close()
+    def test_to_dict_values(self):
+        """test that values in dict returned from to_dict are correct"""
+        t_format = "%Y-%m-%dT%H:%M:%S.%f"
+        am = Amenity()
+        new_d = am.to_dict()
+        self.assertEqual(new_d["__class__"], "Amenity")
+        self.assertEqual(type(new_d["created_at"]), str)
+        self.assertEqual(type(new_d["updated_at"]), str)
+        self.assertEqual(new_d["created_at"], am.created_at.strftime(t_format))
+        self.assertEqual(new_d["updated_at"], am.updated_at.strftime(t_format))
 
-        def test_create_amenities(self):
-            """Test for class Amenity"""
-            # Create State
-            state_id = exec_command(my_console, 'create State name="Alaska"')
-            self.db.commit()
-
-            self.cursor.execute("SELECT COUNT(id) AS count_1  FROM states")
-            count_1 = self.cursor.fetchall()
-
-            self.cursor.execute("SELECT id FROM states")
-            rows_1 = self.cursor.fetchall()
-            self.assertAlmostEqual(count_1[0][0], len(rows_1))
-
-            # Create City
-            city_id = exec_command(
-                my_console,
-                f"""create City
-                                   state_id="{state_id}" name="New_York" """,
-            )
-            self.db.commit()
-
-            # Create User
-            user_id = exec_command(
-                my_console,
-                f"""create User email="a@.com"
-                                   password="apasswd" """,
-            )
-            self.db.commit()
-
-            # Create Places
-            place_id = exec_command(
-                my_console,
-                f"""create Place user_id="{user_id}"
-                                    city_id="{city_id}"
-                                    name="Central_Park" """,
-            )
-            self.db.commit()
-
-            # Create Amenity
-            amenity_id = exec_command(my_console, 'create Amenity name="Cable"')
-            self.db.commit()
-
-        def test_amenity_exist(self):
-            """Test for checking if state name exist"""
-            self.cursor.execute("SELECT name FROM amenities")
-            names_1 = self.cursor.fetchall()
-            name_exist = "Cable" in [tup[0] for tup in names_1 if "Cable" in tup]
-            self.assertTrue(name_exist)
-
-        def test_type(self):
-            """Test for checking if state name exist"""
-            self.cursor.execute("SELECT name FROM amenities")
-            names_1 = self.cursor.fetchall()
-            self.assertEqual(type(names_1[0][0]), str)
-
-        def test_type_created(self):
-            """Test for checking if state name exist"""
-            self.cursor.execute("SELECT created_at FROM amenities")
-            names_1 = self.cursor.fetchall()
-            self.assertEqual(type(names_1[0][0]), datetime.datetime)
-
-        def test_type_updated(self):
-            """Test for checking if state name exist"""
-            self.cursor.execute("SELECT updated_at FROM amenities")
-            names_1 = self.cursor.fetchall()
-            self.assertEqual(type(names_1[0][0]), datetime.datetime)
-
-        def test_typei_id(self):
-            """Test for checking if state name exist"""
-            self.cursor.execute("SELECT id FROM amenities")
-            names_1 = self.cursor.fetchall()
-            self.assertEqual(type(names_1[0][0]), str)
-
-else:
-    from tests.test_models.test_base_model import test_basemodel
-
-    class test_Amenity(test_basemodel):
-        """ """
-
-        def __init__(self, *args, **kwargs):
-            """ """
-            super().__init__(*args, **kwargs)
-            self.name = "Amenity"
-            self.value = Amenity
-
-        def test_name2(self):
-            """ """
-            new = self.value()
-            self.assertEqual(type(new.name), str)
+    def test_str(self):
+        """test that the str method has the correct output"""
+        amenity = Amenity()
+        string = "[Amenity] ({}) {}".format(amenity.id, amenity.__dict__)
+        self.assertEqual(string, str(amenity))

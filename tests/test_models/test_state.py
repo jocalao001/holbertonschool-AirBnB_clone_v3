@@ -1,156 +1,105 @@
 #!/usr/bin/python3
-""" """
-from models.state import State
-import os
+"""
+Contains the TestStateDocs classes
+"""
+
+from datetime import datetime
+import inspect
+import models
+from models import state
+from models.base_model import BaseModel
+import pep8
+import unittest
+State = state.State
 
 
-if os.getenv("HBNB_TYPE_STORAGE") == "db":
-    import MySQLdb
-    import unittest
-    import inspect
-    import io
-    import sys
-    import cmd
-    import shutil
-    import console
-    import datetime
+class TestStateDocs(unittest.TestCase):
+    """Tests to check the documentation and style of State class"""
+    @classmethod
+    def setUpClass(cls):
+        """Set up for the doc tests"""
+        cls.state_f = inspect.getmembers(State, inspect.isfunction)
 
-    """
-        Backup console
-    """
-    if os.path.exists("copy_console.py"):
-        shutil.copy("copy_console.py", "console.py")
-    shutil.copy("console.py", "copy_console.py")
+    def test_pep8_conformance_state(self):
+        """Test that models/state.py conforms to PEP8."""
+        pep8s = pep8.StyleGuide(quiet=True)
+        result = pep8s.check_files(['models/state.py'])
+        self.assertEqual(result.total_errors, 0,
+                         "Found code style errors (and warnings).")
 
-    """
-        Updating console to remove "__main__"
-    """
-    with open("copy_console.py", "r") as file_i:
-        console_lines = file_i.readlines()
-        with open("console.py", "w") as file_o:
-            in_main = False
-            for line in console_lines:
-                if "__main__" in line:
-                    in_main = True
-                elif in_main:
-                    if "cmdloop" not in line:
-                        file_o.write(line.lstrip("    "))
-                else:
-                    file_o.write(line)
+    def test_pep8_conformance_test_state(self):
+        """Test that tests/test_models/test_state.py conforms to PEP8."""
+        pep8s = pep8.StyleGuide(quiet=True)
+        result = pep8s.check_files(['tests/test_models/test_state.py'])
+        self.assertEqual(result.total_errors, 0,
+                         "Found code style errors (and warnings).")
 
-    """
-     Create console
-    """
-    console_obj = "HBNBCommand"
-    for name, obj in inspect.getmembers(console):
-        if inspect.isclass(obj) and issubclass(obj, cmd.Cmd):
-            console_obj = obj
+    def test_state_module_docstring(self):
+        """Test for the state.py module docstring"""
+        self.assertIsNot(state.__doc__, None,
+                         "state.py needs a docstring")
+        self.assertTrue(len(state.__doc__) >= 1,
+                        "state.py needs a docstring")
 
-    my_console = console_obj(stdout=io.StringIO(), stdin=io.StringIO())
-    my_console.use_rawinput = False
+    def test_state_class_docstring(self):
+        """Test for the State class docstring"""
+        self.assertIsNot(State.__doc__, None,
+                         "State class needs a docstring")
+        self.assertTrue(len(State.__doc__) >= 1,
+                        "State class needs a docstring")
 
-    """
-     Exec command
-    """
+    def test_state_func_docstrings(self):
+        """Test for the presence of docstrings in State methods"""
+        for func in self.state_f:
+            self.assertIsNot(func[1].__doc__, None,
+                             "{:s} method needs a docstring".format(func[0]))
+            self.assertTrue(len(func[1].__doc__) >= 1,
+                            "{:s} method needs a docstring".format(func[0]))
 
-    def exec_command(my_console, the_command, last_lines=1):
-        my_console.stdout = io.StringIO()
-        real_stdout = sys.stdout
-        sys.stdout = my_console.stdout
-        my_console.onecmd(the_command)
-        sys.stdout = real_stdout
-        lines = my_console.stdout.getvalue().split("\n")
-        return "\n".join(lines[(-1 * (last_lines + 1)) : -1])
 
-    DB_CONFIG = {
-        "host": "localhost",
-        "user": "hbnb_test",
-        "password": "hbnb_test_pwd",
-        "db": "hbnb_test_db",
-    }
+class TestState(unittest.TestCase):
+    """Test the State class"""
+    def test_is_subclass(self):
+        """Test that State is a subclass of BaseModel"""
+        state = State()
+        self.assertIsInstance(state, BaseModel)
+        self.assertTrue(hasattr(state, "id"))
+        self.assertTrue(hasattr(state, "created_at"))
+        self.assertTrue(hasattr(state, "updated_at"))
 
-    class TestState(unittest.TestCase):
-        """Test cases for database storage"""
+    def test_name_attr(self):
+        """Test that State has attribute name, and it's as an empty string"""
+        state = State()
+        self.assertTrue(hasattr(state, "name"))
+        if models.storage_t == 'db':
+            self.assertEqual(state.name, None)
+        else:
+            self.assertEqual(state.name, "")
 
-        def setUp(self):
-            """Connect to the test database and create a cursor"""
-            self.db = MySQLdb.connect(**DB_CONFIG)
-            self.cursor = self.db.cursor()
+    def test_to_dict_creates_dict(self):
+        """test to_dict method creates a dictionary with proper attrs"""
+        s = State()
+        new_d = s.to_dict()
+        self.assertEqual(type(new_d), dict)
+        self.assertFalse("_sa_instance_state" in new_d)
+        for attr in s.__dict__:
+            if attr is not "_sa_instance_state":
+                self.assertTrue(attr in new_d)
+        self.assertTrue("__class__" in new_d)
 
-        def tearDown(self):
-            """Close the cursor and connection after the test"""
-            self.cursor.close()
-            self.db.close()
+    def test_to_dict_values(self):
+        """test that values in dict returned from to_dict are correct"""
+        t_format = "%Y-%m-%dT%H:%M:%S.%f"
+        s = State()
+        new_d = s.to_dict()
+        self.assertEqual(new_d["__class__"], "State")
+        self.assertEqual(type(new_d["created_at"]), str)
+        self.assertEqual(type(new_d["updated_at"]), str)
+        self.assertEqual(new_d["created_at"], s.created_at.strftime(t_format))
+        self.assertEqual(new_d["updated_at"], s.updated_at.strftime(t_format))
 
-        def test_create_state(self):
-            """Test for class State"""
-            state_id_1 = exec_command(my_console, 'create State name="California"')
-            self.db.commit()
-
-            # Create a new state
-            state_id_2 = exec_command(my_console, 'create State name="New_York"')
-            self.db.commit()
-
-        def test_count_insertion(self):
-            """Test for checking how many insertions are"""
-            self.cursor.execute("SELECT COUNT(id) AS count_1  FROM states")
-            count_1 = self.cursor.fetchall()
-
-            self.cursor.execute("SELECT id FROM states")
-            rows_1 = self.cursor.fetchall()
-            self.assertAlmostEqual(count_1[0][0], len(rows_1))
-
-        def test_type(self):
-            """Test for checking type value"""
-            self.cursor.execute("SELECT name FROM states")
-            rows_1 = self.cursor.fetchall()
-            self.assertAlmostEqual(type(rows_1[0][0]), str)
-
-        def test_type_id(self):
-            """Test for checking type value"""
-            self.cursor.execute("SELECT id FROM states")
-            rows_1 = self.cursor.fetchall()
-            self.assertAlmostEqual(type(rows_1[0][0]), str)
-
-        def test_type_created_At(self):
-            """Test for checking type value"""
-            self.cursor.execute("SELECT created_at FROM states")
-            rows_1 = self.cursor.fetchall()
-            self.assertAlmostEqual(type(rows_1[0][0]), datetime.datetime)
-
-        def test_type_updated_At(self):
-            """Test for checking type value"""
-            self.cursor.execute("SELECT updated_at FROM states")
-            rows_1 = self.cursor.fetchall()
-            self.assertAlmostEqual(type(rows_1[0][0]), datetime.datetime)
-
-        def test_state_exist(self):
-            """Test for checking if state name exist"""
-            self.cursor.execute("SELECT name FROM states")
-            names_1 = self.cursor.fetchall()
-            name_exist = "California" in [
-                tup[0] for tup in names_1 if "California" in tup
-            ]
-            self.assertTrue(name_exist)
-
-            self.cursor.execute("SELECT name  FROM states")
-            names_2 = self.cursor.fetchall()
-            name_exist = "New York" in [tup[0] for tup in names_2 if "New York" in tup]
-            self.assertTrue(name_exist)
-
-else:
-    from tests.test_models.test_base_model import test_basemodel
-
-    class test_state(test_basemodel):
-        """ """
-
-        def __init__(self, *args, **kwargs):
-            """ """
-            super().__init__(*args, **kwargs)
-            self.name = "State"
-            self.value = State
-
-        def test_name3(self):
-            """ """
-            new = self.value()
-            self.assertEqual(type(new.name), str)
+    def test_str(self):
+        """test that the str method has the correct output"""
+        state = State()
+        string = "[State] ({}) {}".format(state.id, state.__dict__)
+        self.assertEqual(string, str(state))
