@@ -1,105 +1,116 @@
 #!/usr/bin/python3
-"""Module to test database storage"""
+"""
+Contains the TestDBStorageDocs and TestDBStorage classes
+"""
 
-
-from models import storage
-import MySQLdb
-import unittest
+from datetime import datetime
 import inspect
-import io
-import sys
-import cmd
-import shutil
-import os
-import console
+import models
+from models.engine import db_storage
+from models.amenity import Amenity
+from models.base_model import BaseModel
+from models.city import City
+from models.place import Place
+from models.review import Review
+from models.state import State
+from models.user import User
 import json
-
-"""
-    Backup console
-"""
-if os.path.exists("copy_console.py"):
-    shutil.copy("copy_console.py", "console.py")
-shutil.copy("console.py", "copy_console.py")
-
-
-"""
-    Updating console to remove "__main__"
-"""
-with open("copy_console.py", "r") as file_i:
-    console_lines = file_i.readlines()
-    with open("console.py", "w") as file_o:
-        in_main = False
-        for line in console_lines:
-            if "__main__" in line:
-                in_main = True
-            elif in_main:
-                if "cmdloop" not in line:
-                    file_o.write(line.lstrip("    "))
-            else:
-                file_o.write(line)
-
-"""
- Create console
-"""
-console_obj = "HBNBCommand"
-for name, obj in inspect.getmembers(console):
-    if inspect.isclass(obj) and issubclass(obj, cmd.Cmd):
-        console_obj = obj
-
-my_console = console_obj(stdout=io.StringIO(), stdin=io.StringIO())
-my_console.use_rawinput = False
+import os
+import pep8
+import unittest
+DBStorage = db_storage.DBStorage
+classes = {"Amenity": Amenity, "City": City, "Place": Place,
+           "Review": Review, "State": State, "User": User}
 
 
-"""
- Exec command
-"""
+class TestDBStorageDocs(unittest.TestCase):
+    """Tests to check the documentation and style of DBStorage class"""
+    @classmethod
+    def setUpClass(cls):
+        """Set up for the doc tests"""
+        cls.dbs_f = inspect.getmembers(DBStorage, inspect.isfunction)
+
+    def test_pep8_conformance_db_storage(self):
+        """Test that models/engine/db_storage.py conforms to PEP8."""
+        pep8s = pep8.StyleGuide(quiet=True)
+        result = pep8s.check_files(['models/engine/db_storage.py'])
+        self.assertEqual(result.total_errors, 0,
+                         "Found code style errors (and warnings).")
+
+    def test_pep8_conformance_test_db_storage(self):
+        """Test tests/test_models/test_db_storage.py conforms to PEP8."""
+        pep8s = pep8.StyleGuide(quiet=True)
+        result = pep8s.check_files(['tests/test_models/test_engine/\
+test_db_storage.py'])
+        self.assertEqual(result.total_errors, 0,
+                         "Found code style errors (and warnings).")
+
+    def test_db_storage_module_docstring(self):
+        """Test for the db_storage.py module docstring"""
+        self.assertIsNot(db_storage.__doc__, None,
+                         "db_storage.py needs a docstring")
+        self.assertTrue(len(db_storage.__doc__) >= 1,
+                        "db_storage.py needs a docstring")
+
+    def test_db_storage_class_docstring(self):
+        """Test for the DBStorage class docstring"""
+        self.assertIsNot(DBStorage.__doc__, None,
+                         "DBStorage class needs a docstring")
+        self.assertTrue(len(DBStorage.__doc__) >= 1,
+                        "DBStorage class needs a docstring")
+
+    def test_dbs_func_docstrings(self):
+        """Test for the presence of docstrings in DBStorage methods"""
+        for func in self.dbs_f:
+            self.assertIsNot(func[1].__doc__, None,
+                             "{:s} method needs a docstring".format(func[0]))
+            self.assertTrue(len(func[1].__doc__) >= 1,
+                            "{:s} method needs a docstring".format(func[0]))
 
 
-def exec_command(my_console, the_command, last_lines=1):
-    my_console.stdout = io.StringIO()
-    real_stdout = sys.stdout
-    sys.stdout = my_console.stdout
-    my_console.onecmd(the_command)
-    sys.stdout = real_stdout
-    lines = my_console.stdout.getvalue().split("\n")
-    return "\n".join(lines[(-1 * (last_lines + 1)): -1])
+class TestFileStorage(unittest.TestCase):
+    """Test the FileStorage class"""
+    @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
+    def test_all_returns_dict(self):
+        """Test that all returns a dictionaty"""
+        self.assertIs(type(models.storage.all()), dict)
 
+    @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
+    def test_all_no_class(self):
+        """Test that all returns all rows when no class is passed"""
 
-DB_CONFIG = {
-    "host": "localhost",
-    "user": "hbnb_test",
-    "password": "hbnb_test_pwd",
-    "db": "hbnb_test_db",
-}
+    @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
+    def test_new(self):
+        """test that new adds an object to the database"""
 
-if os.getenv("HBNB_TYPE_STORAGE") == "db":
-    from models.state import State
+    @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
+    def test_save(self):
+        """Test that save properly saves objects to file.json"""
 
-    class TestDBStorage(unittest.TestCase):
-        """Test cases for database storage"""
+    @unittest.skipIf(models.storage_t != 'db', "not testing file storage")
+    def test_get(self):
+        new_state = State(name="Peru")
+        state_id = new_state.id
+        models.storage.new(new_state)
+        models.storage.save()
+        obj = models.storage.get(State, state_id)
+        self.assertIsNotNone(obj)
+        models.storage.delete(new_state)
+        models.storage.save()
+        obj = models.storage.get(State, state_id)
+        self.assertIsNone(obj)
 
-        def setUp(self):
-            """Connect to the test database and create a cursor"""
-            self.db = MySQLdb.connect(**DB_CONFIG)
-            self.cursor = self.db.cursor()
-
-        def tearDown(self):
-            """Close the cursor and connection after the test"""
-            self.cursor.close()
-            self.db.close()
-
-        def test_all_method(self):
-            """Test for all method"""
-            storage.save()
-            exec_command(my_console, 'create State name="Cali"')
-            self.db.commit()
-            total = len(storage.all(State))
-            total_con = len(json.loads(exec_command(my_console, "all State")))
-            self.assertAlmostEqual(total, total_con)
-            exec_command(my_console, 'create State name="Cali"')
-            self.db.commit()
-            total_con = len(json.loads(exec_command(my_console, "all State")))
-            self.assertAlmostEqual(total_con, total + 1)
-
-else:
-    pass
+    @unittest.skipIf(models.storage_t != 'db', "not testing file storage")
+    def test_count(self):
+        new_state = State(name="Trujillo")
+        new_state_2 = State(name="Cajamarca")
+        state_1_id = new_state.id
+        models.storage.new(new_state)
+        models.storage.new(new_state_2)
+        models.storage.save()
+        new_city = City(name="Viru", state_id=state_1_id)
+        models.storage.new(new_city)
+        models.storage.save()
+        count_state = models.storage.count(State)
+        count_all = models.storage.count()
+        self.assertTrue(count_all > count_state)
