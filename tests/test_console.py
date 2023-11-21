@@ -62,7 +62,7 @@ if os.getenv("HBNB_TYPE_STORAGE") == "db":
         my_console.onecmd(the_command)
         sys.stdout = real_stdout
         lines = my_console.stdout.getvalue().split("\n")
-        return "\n".join(lines[(-1 * (last_lines + 1)) : -1])
+        return "\n".join(lines[(-1 * (last_lines + 1)): -1])
 
     DB_CONFIG = {
         "host": "localhost",
@@ -149,7 +149,7 @@ else:
         my_console.onecmd(the_command)
         sys.stdout = real_stdout
         lines = my_console.stdout.getvalue().split("\n")
-        return "\n".join(lines[(-1 * (last_lines + 1)) : -1])
+        return "\n".join(lines[(-1 * (last_lines + 1)): -1])
 
     class TestConsoleFileStorage(unittest.TestCase):
         """Test for the console working with FileStorage"""
