@@ -1,30 +1,32 @@
 #!/usr/bin/python3
-"""This module defines a class User"""
+""" holds class User"""
+import models
 from models.base_model import BaseModel, Base
-from sqlalchemy import Column, Integer, String
+from hashlib import md5
+from sqlalchemy import Column, String
 from sqlalchemy.orm import relationship
-import os
 
 
-if os.getenv("HBNB_TYPE_STORAGE") == "db":
-
-    class User(BaseModel, Base):
-        """This class defines a user by various attributes"""
-
-        __tablename__ = "users"
+class User(BaseModel, Base):
+    """Representation of a user """
+    if models.storage_t == 'db':
+        __tablename__ = 'users'
         email = Column(String(128), nullable=False)
         password = Column(String(128), nullable=False)
         first_name = Column(String(128), nullable=True)
         last_name = Column(String(128), nullable=True)
-        places = relationship("Place", backref="user", cascade="all, delete-orphan")
-        reviews = relationship("Review", backref="user", cascade="all, delete-orphan")
-
-else:
-
-    class User(BaseModel):
-        """This class defines a user by various attributes"""
-
+        places = relationship("Place", backref="user")
+        reviews = relationship("Review", backref="user")
+    else:
         email = ""
         password = ""
         first_name = ""
         last_name = ""
+
+    def __init__(self, *args, **kwargs):
+        """initializes user"""
+        super().__init__(*args, **kwargs)
+        if "password" in kwargs:
+            md5_encrypt = md5()
+            md5_encrypt.update(kwargs["password"].encode('utf-8'))
+            self.password = md5_encrypt.hexdigest()
