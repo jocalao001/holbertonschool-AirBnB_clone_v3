@@ -62,7 +62,7 @@ def exec_command(my_console, the_command, last_lines=1):
     my_console.onecmd(the_command)
     sys.stdout = real_stdout
     lines = my_console.stdout.getvalue().split("\n")
-    return "\n".join(lines[(-1 * (last_lines + 1)) : -1])
+    return "\n".join(lines[(-1 * (last_lines + 1)): -1])
 
 
 DB_CONFIG = {
