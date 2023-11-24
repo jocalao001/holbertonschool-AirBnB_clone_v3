@@ -1,198 +1,123 @@
 #!/usr/bin/python3
-""" """
-from models.review import Review
-import os
+"""
+Contains the TestReviewDocs classes
+"""
+
+from datetime import datetime
+import inspect
+import models
+from models import review
+from models.base_model import BaseModel
+import pep8
+import unittest
+Review = review.Review
 
 
-if os.getenv("HBNB_TYPE_STORAGE") == "db":
-    import MySQLdb
-    from models.place import Place
-    from models import storage
-    import unittest
-    import inspect
-    import io
-    import sys
-    import cmd
-    import shutil
-    import console
-    import datetime
+class TestReviewDocs(unittest.TestCase):
+    """Tests to check the documentation and style of Review class"""
+    @classmethod
+    def setUpClass(cls):
+        """Set up for the doc tests"""
+        cls.review_f = inspect.getmembers(Review, inspect.isfunction)
 
-    """
-        Backup console
-    """
-    if os.path.exists("copy_console.py"):
-        shutil.copy("copy_console.py", "console.py")
-    shutil.copy("console.py", "copy_console.py")
+    def test_pep8_conformance_review(self):
+        """Test that models/review.py conforms to PEP8."""
+        pep8s = pep8.StyleGuide(quiet=True)
+        result = pep8s.check_files(['models/review.py'])
+        self.assertEqual(result.total_errors, 0,
+                         "Found code style errors (and warnings).")
 
-    """
-        Updating console to remove "__main__"
-    """
-    with open("copy_console.py", "r") as file_i:
-        console_lines = file_i.readlines()
-        with open("console.py", "w") as file_o:
-            in_main = False
-            for line in console_lines:
-                if "__main__" in line:
-                    in_main = True
-                elif in_main:
-                    if "cmdloop" not in line:
-                        file_o.write(line.lstrip("    "))
-                else:
-                    file_o.write(line)
+    def test_pep8_conformance_test_review(self):
+        """Test that tests/test_models/test_review.py conforms to PEP8."""
+        pep8s = pep8.StyleGuide(quiet=True)
+        result = pep8s.check_files(['tests/test_models/test_review.py'])
+        self.assertEqual(result.total_errors, 0,
+                         "Found code style errors (and warnings).")
 
-    """
-     Create console
-    """
-    console_obj = "HBNBCommand"
-    for name, obj in inspect.getmembers(console):
-        if inspect.isclass(obj) and issubclass(obj, cmd.Cmd):
-            console_obj = obj
+    def test_review_module_docstring(self):
+        """Test for the review.py module docstring"""
+        self.assertIsNot(review.__doc__, None,
+                         "review.py needs a docstring")
+        self.assertTrue(len(review.__doc__) >= 1,
+                        "review.py needs a docstring")
 
-    my_console = console_obj(stdout=io.StringIO(), stdin=io.StringIO())
-    my_console.use_rawinput = False
+    def test_review_class_docstring(self):
+        """Test for the Review class docstring"""
+        self.assertIsNot(Review.__doc__, None,
+                         "Review class needs a docstring")
+        self.assertTrue(len(Review.__doc__) >= 1,
+                        "Review class needs a docstring")
 
-    """
-     Exec command
-    """
+    def test_review_func_docstrings(self):
+        """Test for the presence of docstrings in Review methods"""
+        for func in self.review_f:
+            self.assertIsNot(func[1].__doc__, None,
+                             "{:s} method needs a docstring".format(func[0]))
+            self.assertTrue(len(func[1].__doc__) >= 1,
+                            "{:s} method needs a docstring".format(func[0]))
 
-    def exec_command(my_console, the_command, last_lines=1):
-        my_console.stdout = io.StringIO()
-        real_stdout = sys.stdout
-        sys.stdout = my_console.stdout
-        my_console.onecmd(the_command)
-        sys.stdout = real_stdout
-        lines = my_console.stdout.getvalue().split("\n")
-        return "\n".join(lines[(-1 * (last_lines + 1)): -1])
 
-    DB_CONFIG = {
-        "host": "localhost",
-        "user": "hbnb_test",
-        "password": "hbnb_test_pwd",
-        "db": "hbnb_test_db",
-    }
+class TestReview(unittest.TestCase):
+    """Test the Review class"""
+    def test_is_subclass(self):
+        """Test if Review is a subclass of BaseModel"""
+        review = Review()
+        self.assertIsInstance(review, BaseModel)
+        self.assertTrue(hasattr(review, "id"))
+        self.assertTrue(hasattr(review, "created_at"))
+        self.assertTrue(hasattr(review, "updated_at"))
 
-    class TestReview(unittest.TestCase):
-        """Test cases for Review class"""
+    def test_place_id_attr(self):
+        """Test Review has attr place_id, and it's an empty string"""
+        review = Review()
+        self.assertTrue(hasattr(review, "place_id"))
+        if models.storage_t == 'db':
+            self.assertEqual(review.place_id, None)
+        else:
+            self.assertEqual(review.place_id, "")
 
-        def setUp(self):
-            """Connect to the test database and create a cursor"""
-            self.db = MySQLdb.connect(**DB_CONFIG)
-            self.cursor = self.db.cursor()
+    def test_user_id_attr(self):
+        """Test Review has attr user_id, and it's an empty string"""
+        review = Review()
+        self.assertTrue(hasattr(review, "user_id"))
+        if models.storage_t == 'db':
+            self.assertEqual(review.user_id, None)
+        else:
+            self.assertEqual(review.user_id, "")
 
-        def tearDown(self):
-            """Close the cursor and connection after the test"""
-            self.cursor.close()
-            self.db.close()
+    def test_text_attr(self):
+        """Test Review has attr text, and it's an empty string"""
+        review = Review()
+        self.assertTrue(hasattr(review, "text"))
+        if models.storage_t == 'db':
+            self.assertEqual(review.text, None)
+        else:
+            self.assertEqual(review.text, "")
 
-        def test_create_reviews(self):
-            """Test for creating reviews"""
-            # Create State
-            state_id = exec_command(my_console, 'create State name="Texas"')
-            self.db.commit()
+    def test_to_dict_creates_dict(self):
+        """test to_dict method creates a dictionary with proper attrs"""
+        r = Review()
+        new_d = r.to_dict()
+        self.assertEqual(type(new_d), dict)
+        self.assertFalse("_sa_instance_state" in new_d)
+        for attr in r.__dict__:
+            if attr is not "_sa_instance_state":
+                self.assertTrue(attr in new_d)
+        self.assertTrue("__class__" in new_d)
 
-            # Create City
-            city_id = exec_command(
-                my_console,
-                f"""create City
-                                   state_id="{state_id}" name="Alpine" """,
-            )
-            self.db.commit()
+    def test_to_dict_values(self):
+        """test that values in dict returned from to_dict are correct"""
+        t_format = "%Y-%m-%dT%H:%M:%S.%f"
+        r = Review()
+        new_d = r.to_dict()
+        self.assertEqual(new_d["__class__"], "Review")
+        self.assertEqual(type(new_d["created_at"]), str)
+        self.assertEqual(type(new_d["updated_at"]), str)
+        self.assertEqual(new_d["created_at"], r.created_at.strftime(t_format))
+        self.assertEqual(new_d["updated_at"], r.updated_at.strftime(t_format))
 
-            # Create User
-            user_id = exec_command(
-                my_console,
-                f"""create User email="a@x.com"
-                                   password="apasswd" """,
-            )
-            self.db.commit()
-
-            # Create Places
-            place_id = exec_command(
-                my_console,
-                f"""create Place user_id="{user_id}"
-                                    city_id="{city_id}"
-                                    name="Central_Park" """,
-            )
-            self.db.commit()
-
-            # Create Review
-            review_id = exec_command(
-                my_console,
-                f"""create Review
-                                     place_id="{place_id}"
-                                     user_id="{user_id}"
-                                     text="It_is_awesome" """,
-            )
-            self.db.commit()
-
-        def test_review_exist(self):
-            """Test for checking if review text exist"""
-            self.cursor.execute("SELECT text FROM reviews")
-            texts = self.cursor.fetchall()
-            text_exist = "It is awesome" in [
-                tup[0] for tup in texts if "It is awesome" in tup
-            ]
-            self.assertTrue(text_exist)
-
-        def test_type_name(self):
-            """Test for checking if review text exist"""
-            self.cursor.execute("SELECT text FROM reviews")
-            texts = self.cursor.fetchall()
-            self.assertTrue(type(texts[0][0]), str)
-
-        def test_type_user_id(self):
-            """Test for checking if review text exist"""
-            self.cursor.execute("SELECT user_id FROM reviews")
-            texts = self.cursor.fetchall()
-            self.assertTrue(type(texts[0][0]), str)
-
-        def test_type_place_id(self):
-            """Test for checking if review text exist"""
-            self.cursor.execute("SELECT place_id FROM reviews")
-            texts = self.cursor.fetchall()
-            self.assertTrue(type(texts[0][0]), str)
-
-        def test_type_id(self):
-            """Test for checking if review text exist"""
-            self.cursor.execute("SELECT id FROM reviews")
-            texts = self.cursor.fetchall()
-            self.assertTrue(type(texts[0][0]), str)
-
-        def test_type_created_at(self):
-            """Test for checking if review text exist"""
-            self.cursor.execute("SELECT created_at FROM reviews")
-            texts = self.cursor.fetchall()
-            self.assertTrue(type(texts[0][0]), datetime.datetime)
-
-        def test_type_updated_at(self):
-            """Test for checking if review text exist"""
-            self.cursor.execute("SELECT updated_at FROM reviews")
-            texts = self.cursor.fetchall()
-            self.assertTrue(type(texts[0][0]), datetime.datetime)
-
-else:
-    from tests.test_models.test_base_model import test_basemodel
-
-    class test_review(test_basemodel):
-        """ """
-
-        def __init__(self, *args, **kwargs):
-            """ """
-            super().__init__(*args, **kwargs)
-            self.name = "Review"
-            self.value = Review
-
-        def test_place_id(self):
-            """ """
-            new = self.value()
-            self.assertEqual(type(new.place_id), str)
-
-        def test_user_id(self):
-            """ """
-            new = self.value()
-            self.assertEqual(type(new.user_id), str)
-
-        def test_text(self):
-            """ """
-            new = self.value()
-            self.assertEqual(type(new.text), str)
+    def test_str(self):
+        """test that the str method has the correct output"""
+        review = Review()
+        string = "[Review] ({}) {}".format(review.id, review.__dict__)
+        self.assertEqual(string, str(review))
